@@ -1,3 +1,5 @@
 #!/bin/bash
 
+# combs through ifconfig output for the non-loopback ip address
+
 ifconfig | grep inet | grep -v net6 | grep -v '127.0.0.1' | awk '{print $2}'
