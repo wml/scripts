@@ -1,0 +1,84 @@
+#!/usr/bin/perl
+
+use 5.010;
+use strict;
+use warnings;
+use File::Basename;
+use Net::DBus;
+
+  # Figure out some dbus stuff
+  unless ( defined $ENV{'DBUS_SESSION_BUS_ADDRESS'} ) { 
+  &set_DBUS_SESSION_BUS_ADDRESS;
+  #die "Don't know which dbus to attach to.\nMake sure environment variable DBUS_SESSION_BUS_ADDRESS is set.";
+  }
+  #my $bus =            Net::DBus->find;
+  my $bus =                     Net::DBus->session;
+  my $spotify =                         $bus->get_service("org.mpris.MediaPlayer2.spotify");
+  my $player =                                  $spotify->get_object("/org/mpris/MediaPlayer2", "org.mpris.MediaPlayer2.Player");
+  my $application =                             $spotify->get_object("/org/mpris/MediaPlayer2", "org.mpris.MediaPlayer2");
+  my $getorset =  $spotify->get_object("/org/mpris/MediaPlayer2", "org.freedesktop.DBus.Properties");
+
+# Handle command line argument
+if (scalar @ARGV == 0) { &print_help; }
+given ($ARGV[0]) {
+#     when ('play') {   $player->Play(); }              #Does not work for some reason.
+      when ('pause') {  $player->Pause(); }
+      when ('playpause') {                $player->PlayPause(); }
+      when ('next') {    $player->Next(); }
+      when ('previous') {                 $player->Previous(); }
+      when ('stop') {   $player->Stop(); }
+      when ('playstatus') { print $getorset->Get("org.mpris.MediaPlayer2.Player", "PlaybackStatus") . "\n"; }
+      when (m/\bspotify:(artist|album|track):[0-9a-zA-z]{22}\b/) { $player->OpenUri($_); }
+      when ('metadata-debug') { &print_debug_metadata; }
+      default { &print_help; }
+}
+        
+
+# Print the help text
+sub print_help {
+    print "USAGE: " . basename($0) . " {pause|playpause|next|previous|stop|playstatus|metadata-debug|<spotify URI>}\n\n";
+    print "\t" . "pause"             . "\t\t"                                                                 . "Causes spotify to pause current playback."  . "\n";
+    print "\t" . "playpause"         . "\t"                                                                     . "Causes spotify to pause or play current playback." . "\n";
+    print "\t" . "next"                . "\t\t"                                                                 . "Goes to next song."                                . "\n";
+    print "\t" . "previous"              . "\t"                                                                   . "Goes to previous song."                              . "\n";
+    print "\t" . "stop"                    . "\t\t"                                                               . "Stops playback."                                         . "\n";
+    print "\t" . "playstatus"              . "\t"                                                                   . "Prints current playstatus (Playing/Paused)."             . "\n";
+    print "\t" . "<spotify URI>"           . "\t"                                                                     . "Starts playing supplied URI."                             . "\n";
+    print "\t" . "metadata-debug"          . "\t"                                                                       . "Shows available data on currently playing song."        . "\n";
+    print "\t"                               . "\t\t"                                                                   . "Fairly unformatted, thus \"debug\" data."               . "\n";
+    print                                                                                                                                                                                 "\n";
+    print "EXAMPLES:\t"                                                                                                                                                                   . basename($0) . " playpause"        . "\n";
+    print "\t\t"                                                                                                                                                                            . basename($0) . " spotify:track:5XXAq1r5r73ZyBS0XAiGw0"   . "\n";
+    
+    exit;
+}
+
+# Print some raw metadata
+sub print_debug_metadata {
+    # Dereference the metadata hashref by copying it to a local hash
+    my %metadata = %{ $getorset->Get("org.mpris.MediaPlayer2.Player", "Metadata") };
+
+    # Print all metadata
+    print "Now Playing:\n";
+    for (keys %metadata) {
+        print $_ . ":\t" . $metadata{$_} . "\n" unless ($_ eq 'xesam:artist');
+        }
+
+        # Dereference the artist arrayref by copying it to local array
+        my @artistarray = @{ $metadata{'xesam:artist'} };
+
+        # Print all artists.
+        foreach my $artist (@artistarray) {
+                print "artist: \t" . $artist . "\n";
+                }
+}
+
+sub set_DBUS_SESSION_BUS_ADDRESS {
+    my $curruser                 = `whoami`; chomp $curruser;
+    my $procname                 = 'spotify';
+    my $pid                        = `pgrep -o -u $curruser $procname`; chomp $pid;
+    my $environ                    = '/proc/' . $pid . '/environ';
+    my $dbussession = `grep -z DBUS_SESSION_BUS_ADDRESS $environ`; $dbussession =~ s/^DBUS_SESSION_BUS_ADDRESS=//;
+
+    $ENV{'DBUS_SESSION_BUS_ADDRESS'} = $dbussession;
+}
