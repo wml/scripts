@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# turn any caps lock key into control
+
+xmodmap -e 'keycode 36 = Control_R Return'
+xmodmap -e 'add Control = Control_R'
