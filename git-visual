@@ -1,0 +1,17 @@
+#!/bin/bash
+#
+# toggles visual diff by manipulating the ~/.gitconfig file.
+# requires
+#   the `git-meld' script on PATH
+#   `meld' package
+#   `sed' package
+#
+
+CONFIG="$HOME/.gitconfig"
+grep \#external $CONFIG >/dev/null 2>&1
+
+if [[ 0 -eq $? ]]; then
+    sed -i 's/\#external/external/' ~/.gitconfig
+else
+    sed -i 's/external/\#external/' ~/.gitconfig
+fi
