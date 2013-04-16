@@ -1,0 +1,2 @@
+#!/bin/bash
+import -window root -display :0.0 -screen /tmp/ss.png
